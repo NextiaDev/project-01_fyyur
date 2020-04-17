@@ -2,11 +2,9 @@
 # Imports
 #----------------------------------------------------------------------------#
 
-import json
 import dateutil.parser
 import babel
-from flask import render_template, request, Response, flash, redirect, url_for, jsonify
-from flask_moment import Moment
+from flask import render_template, request, flash, redirect, url_for, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
 import logging
@@ -16,6 +14,7 @@ from os import sys
 from forms import *
 from database import *
 from models import *
+from random_word import RandomWords
 
 #----------------------------------------------------------------------------#
 # Filters.
@@ -37,8 +36,138 @@ app.jinja_env.filters['datetime'] = format_datetime
 
 @app.route('/')
 def index():
+  # get 10 last artists and venues created by id
+  artists = Artist.query.order_by(Artist.id.desc()).limit(10).all()
+  venues = Venue.query.order_by(Venue.id.desc()).limit(10).all()
+
+  return render_template('pages/home.html', venues=venues, artists=artists )
+
+# use to populate genres and states db for testing
+@app.route('/populate')
+def populate_genres_states():
+  try:
+    # add states
+    states = [
+              ('AL', 'AL'),
+              ('AK', 'AK'),
+              ('AZ', 'AZ'),
+              ('AR', 'AR'),
+              ('CA', 'CA'),
+              ('CO', 'CO'),
+              ('CT', 'CT'),
+              ('DE', 'DE'),
+              ('DC', 'DC'),
+              ('FL', 'FL'),
+              ('GA', 'GA'),
+              ('HI', 'HI'),
+              ('ID', 'ID'),
+              ('IL', 'IL'),
+              ('IN', 'IN'),
+              ('IA', 'IA'),
+              ('KS', 'KS'),
+              ('KY', 'KY'),
+              ('LA', 'LA'),
+              ('ME', 'ME'),
+              ('MT', 'MT'),
+              ('NE', 'NE'),
+              ('NV', 'NV'),
+              ('NH', 'NH'),
+              ('NJ', 'NJ'),
+              ('NM', 'NM'),
+              ('NY', 'NY'),
+              ('NC', 'NC'),
+              ('ND', 'ND'),
+              ('OH', 'OH'),
+              ('OK', 'OK'),
+              ('OR', 'OR'),
+              ('MD', 'MD'),
+              ('MA', 'MA'),
+              ('MI', 'MI'),
+              ('MN', 'MN'),
+              ('MS', 'MS'),
+              ('MO', 'MO'),
+              ('PA', 'PA'),
+              ('RI', 'RI'),
+              ('SC', 'SC'),
+              ('SD', 'SD'),
+              ('TN', 'TN'),
+              ('TX', 'TX'),
+              ('UT', 'UT'),
+              ('VT', 'VT'),
+              ('VA', 'VA'),
+              ('WA', 'WA'),
+              ('WV', 'WV'),
+              ('WI', 'WI'),
+              ('WY', 'WY'),
+          ]
+    for choice in states:
+      new_state = State(name=choice[0],abbreviation=choice[1])
+      db.session.add(new_state)
+    # add genres
+    genres = [
+            ('Alternative', 'Alternative'),
+            ('Blues', 'Blues'),
+            ('Classical', 'Classical'),
+            ('Country', 'Country'),
+            ('Electronic', 'Electronic'),
+            ('Folk', 'Folk'),
+            ('Funk', 'Funk'),
+            ('Hip-Hop', 'Hip-Hop'),
+            ('Heavy Metal', 'Heavy Metal'),
+            ('Instrumental', 'Instrumental'),
+            ('Jazz', 'Jazz'),
+            ('Musical Theatre', 'Musical Theatre'),
+            ('Pop', 'Pop'),
+            ('Punk', 'Punk'),
+            ('R&B', 'R&B'),
+            ('Reggae', 'Reggae'),
+            ('Rock n Roll', 'Rock n Roll'),
+            ('Soul', 'Soul'),
+            ('Other', 'Other'),
+        ]
+    for choice in genres:
+      new_genre = Genre(name=choice[0])
+      db.session.add(new_genre)
+
+      db.session.commit()
+  except:
+    db.session.rollback()
+  finally:
+    db.session.close()
+
   return render_template('pages/home.html')
 
+# add random albums/songs to an artist to show what albums and songs an artist has on the Artist’s page.
+@app.route('/artists/<int:artist_id>/albums')
+def load_albums(artist_id):
+  # load albums and songs
+  try:
+    r = RandomWords()
+    # get_random_word sometimes can fail because a bug but for testing its ok, try again :)
+    # create random albums
+    album1 = Album(name=r.get_random_word())
+    album2 = Album(name=r.get_random_word())
+    db.session.add_all([album1, album2])
+    db.session.commit()
+
+    # create random songs
+    song1 = Song(name=r.get_random_word(), album_fk=album1.id)
+    song2 = Song(name=r.get_random_word(), album_fk=album1.id)
+    song3 = Song(name=r.get_random_word(), album_fk=album2.id)
+    db.session.add_all([song1, song2, song3])    
+
+    # link to artist
+    artist = Artist.query.get(artist_id)
+    artist.albums = [album1, album2]
+    db.session.commit()
+
+  except:
+    db.session.rollback()
+    print(sys.exc_info())
+  finally:
+    db.session.close()
+
+  return redirect(url_for('show_artist', artist_id=artist_id))
 
 #  Venues
 #  ----------------------------------------------------------------
@@ -103,7 +232,22 @@ def search_venues():
     "data": data_search
   }
 
-  return render_template('pages/search_venues.html', results=response, search_term=search_term)
+  # Search venues by location city - state
+  search_location = search_term.split(',')
+  response_location = ''
+
+  # only search by location if string format is: "CITY", "STATE"
+  if len(search_location) == 2:
+    state = State.query.filter(State.abbreviation.ilike(search_location[1].strip())).first()
+    if state:
+      venues_by_state = Venue.query.filter_by(state_fk=state.id)
+      venues_by_state_city = venues_by_state.filter(Venue.city.ilike(search_location[0].strip()))
+      response_location = venues_by_state_city.all()
+
+      # add results to count
+      response['count'] += venues_by_state_city.count() 
+
+  return render_template('pages/search_venues.html', results=response, search_term=search_term, results_location=response_location)
 
 @app.route('/venues/<int:venue_id>')
 def show_venue(venue_id):
@@ -115,12 +259,16 @@ def show_venue(venue_id):
   shows = venue.artists
   # venue result to dict, need to add extra data from shows
   venue_dict = venue.__dict__
-  
+
+  # state
+  venue_dict['state'] = venue.state.name
+  # genres
+  venue_dict['genres'] = venue.genres
+ 
   # query venue shows
   now =  datetime.now()
   past_shows = shows.filter(Shows.start_time < now)
   upcoming_shows = shows.filter(Shows.start_time > now)
-
   venue_dict['past_shows'] = past_shows.all()
   venue_dict['past_shows_count'] = past_shows.count()
   venue_dict['upcoming_shows'] = upcoming_shows.all()
@@ -159,7 +307,7 @@ def create_venue_submission():
       seeking_artist = request.form.get('seeking_artist') or None
       image_link = request.form.get('image_link') or None
 
-
+      # set seek value
       if seeking_artist is None:
         seeking_artist = False
       else:
@@ -173,6 +321,11 @@ def create_venue_submission():
       new_venue = Venue(name=name, city=city, address=address, phone=phone, facebook_link=facebook_link, website_link=website_link,
                     seeking_description=seeking_description, seeking_artist=seeking_artist, image_link=image_link,
                     state_fk=artist_state.id)
+      
+      # add genres M2M 
+      genres_list = request.form.getlist('genres')
+      genres_add = Genre.query.filter(Genre.name.in_(genres_list)).all()
+      new_venue.genres = genres_add
 
       # save for use after commit
       data_venue['name']= new_venue.name
@@ -183,6 +336,7 @@ def create_venue_submission():
     except:
       error_add_new_venue = 'Error_db_add'
       db.session.rollback()
+      print(sys.exc_info())
       
     finally:
       db.session.close()
@@ -191,12 +345,11 @@ def create_venue_submission():
   
   # error flash mensages
   if error_add_new_venue == 'No_error':
-    flash('Venue ' + data_venue['name'] + ' was successfully added!')
+    flash('Venue ' + data_venue['name'] + ' was successfully added!', 'success')
   elif error_add_new_venue == 'Error_db_add':
-    flash('An error occurred. Venue ' + request.form['name'] + ' could not be added.')
+    flash('An error occurred. Venue ' + request.form['name'] + ' could not be added.', 'danger')
   elif error_add_new_venue == 'Error_form':
-    flash('Error, Invalid Form!')
-    print(form.errors)
+    flash_errors(form)
 
   return render_template('pages/home.html')
 
@@ -204,10 +357,22 @@ def create_venue_submission():
 def delete_venue(venue_id):
   # TODO: Complete this endpoint for taking a venue_id, and using
   # SQLAlchemy ORM to delete a record. Handle cases where the session commit could fail.
+  response = {}
+  try:
+    response['success'] = True
+    venue = Venue.query.get(venue_id)
+    db.session.delete(venue)
+    db.session.commit()
+  except:
+    db.session.rollback()
+    print(sys.exc_info())
+    response['success'] = False
+  finally:
+    db.session.close()
 
   # BONUS CHALLENGE: Implement a button to delete a Venue on a Venue Page, have it so that
   # clicking that button delete it from the db then redirect the user to the homepage
-  return None
+  return jsonify(response)
 
 #  Artists
 #  ----------------------------------------------------------------
@@ -241,7 +406,23 @@ def search_artists():
     "count": search_count,
     "data": data_search
   }
-  return render_template('pages/search_artists.html', results=response, search_term=search_term)
+
+  # Search artist by location city - state
+  search_location = search_term.split(',')
+  response_location = ''
+  
+  # only search by location if string format is: "CITY", "STATE"
+  if len(search_location) == 2:
+    state = State.query.filter(State.abbreviation.ilike(search_location[1].strip())).first()
+    if state:
+      artists_by_state = Artist.query.filter_by(state_fk=state.id)
+      artists_by_state_city = artists_by_state.filter(Artist.city.ilike(search_location[0].strip()))
+      response_location = artists_by_state_city.all()
+
+      # add results to count
+      response['count'] += artists_by_state_city.count() 
+  
+  return render_template('pages/search_artists.html', results=response, search_term=search_term, results_location=response_location)
 
 @app.route('/artists/<int:artist_id>')
 def show_artist(artist_id):
@@ -254,7 +435,12 @@ def show_artist(artist_id):
   
   # artist result to dict, need to add extra data from shows
   artist_dict = artist.__dict__
-  
+
+  # state
+  artist_dict['state'] = artist.state.name
+  # genres
+  artist_dict['genres'] = artist.genres
+ 
   # query artist shows
   now =  datetime.now()
   past_shows = shows.filter(Shows.start_time < now)
@@ -265,26 +451,30 @@ def show_artist(artist_id):
   artist_dict['upcoming_shows'] = upcoming_shows.all()
   artist_dict['upcoming_shows_count'] = upcoming_shows.count()
 
-  return render_template('pages/show_artist.html', artist=artist_dict)
+  # artists albums and songs
+  albums = artist.albums
+  for a in albums:
+    print(a.songs)
+  return render_template('pages/show_artist.html', artist=artist_dict, albums=albums)
 
 #  Update
 #  ----------------------------------------------------------------
 @app.route('/artists/<int:artist_id>/edit', methods=['GET'])
 def edit_artist(artist_id):
+  artist = Artist.query.get_or_404(artist_id)
   form = ArtistForm()
-  artist={
-    "id": 4,
-    "name": "Guns N Petals",
-    "genres": ["Rock n Roll"],
-    "city": "San Francisco",
-    "state": "CA",
-    "phone": "326-123-5000",
-    "website": "https://www.gunsnpetalsband.com",
-    "facebook_link": "https://www.facebook.com/GunsNPetals",
-    "seeking_venue": True,
-    "seeking_description": "Looking for shows to perform at in the San Francisco Bay Area!",
-    "image_link": "https://images.unsplash.com/photo-1549213783-8284d0336c4f?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=300&q=80"
-  }
+  form.name.data = artist.name
+  form.genres.data = artist.genres
+  form.city.data = artist.city
+  form.state.data = State.query.get(artist.state_fk).abbreviation
+  form.genres.data = [ a.name for a in artist.genres.all() ] 
+  form.phone.data = artist.phone
+  form.website_link.data = artist.website_link
+  form.facebook_link.data = artist.facebook_link
+  form.seeking_venue.data = artist.seeking_venue
+  form.seeking_description.data = artist.seeking_description
+  form.image_link.data = artist.image_link
+
   # TODO: populate form with fields from artist with ID <artist_id>
   return render_template('forms/edit_artist.html', form=form, artist=artist)
 
@@ -292,26 +482,76 @@ def edit_artist(artist_id):
 def edit_artist_submission(artist_id):
   # TODO: take values from the form submitted, and update existing
   # artist record with ID <artist_id> using the new attributes
+  form = ArtistForm(request.form)
+
+  if form.validate():
+    error_update_artist = 'No_error'
+
+    try:
+      data_artist = {}
+      artist = Artist.query.get(artist_id)
+      artist.name = request.form['name']
+      artist.city = request.form['city']
+      artist.phone = request.form.get('phone') or None
+      artist.facebook_link = request.form.get('facebook_link') or None
+      artist.website_link = request.form.get('website_link') or None
+      artist.seeking_description = request.form.get('seeking_description') or None
+      artist.image_link = request.form.get('image_link') or None
+
+      seeking_venue = request.form.get('seeking_venue') or None
+      if seeking_venue is None:
+        artist.seeking_venue = False
+      else:
+        artist.seeking_venue = True
+
+      # get state object
+      state = request.form.get('state')
+      artist_state = State.query.filter_by(abbreviation=state).first_or_404()
+      artist.state_fk = artist_state.id
+
+      # add genres M2M 
+      genres_list = request.form.getlist('genres')
+      genres_add = Genre.query.filter(Genre.name.in_(genres_list)).all()
+      artist.genres = genres_add
+      data_artist['name'] = artist.name
+      db.session.commit()
+    except:
+      error_update_artist = 'Error_db_add'
+      db.session.rollback()
+    finally:
+      db.session.close()
+  else:
+      error_update_artist = 'Error_form'
+  
+  # error flash mensages
+  if error_update_artist == 'No_error':
+    flash('Artist ' + data_artist['name'] + ' was successfully updated!', 'success')
+  elif error_update_artist == 'Error_db_add':
+    flash('An error occurred. Artist ' + request.form['name'] + ' could not be updated.', 'danger')
+  elif error_update_artist == 'Error_form':
+    flash_errors(form)
 
   return redirect(url_for('show_artist', artist_id=artist_id))
 
 @app.route('/venues/<int:venue_id>/edit', methods=['GET'])
 def edit_venue(venue_id):
+
+  venue = Venue.query.get_or_404(venue_id)
   form = VenueForm()
-  venue={
-    "id": 1,
-    "name": "The Musical Hop",
-    "genres": ["Jazz", "Reggae", "Swing", "Classical", "Folk"],
-    "address": "1015 Folsom Street",
-    "city": "San Francisco",
-    "state": "CA",
-    "phone": "123-123-1234",
-    "website": "https://www.themusicalhop.com",
-    "facebook_link": "https://www.facebook.com/TheMusicalHop",
-    "seeking_talent": True,
-    "seeking_description": "We are on the lookout for a local artist to play every two weeks. Please call us.",
-    "image_link": "https://images.unsplash.com/photo-1543900694-133f37abaaa5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=400&q=60"
-  }
+
+  form.name.data = venue.name
+  form.genres.data = venue.genres
+  form.city.data = venue.city
+  form.address.data = venue.address
+  form.state.data = State.query.get(venue.state_fk).abbreviation
+  form.genres.data = [ a.name for a in venue.genres.all() ] 
+  form.phone.data = venue.phone
+  form.website_link.data = venue.website_link
+  form.facebook_link.data = venue.facebook_link
+  form.seeking_artist.data = venue.seeking_artist
+  form.seeking_description.data = venue.seeking_description
+  form.image_link.data = venue.image_link
+
   # TODO: populate form with values from venue with ID <venue_id>
   return render_template('forms/edit_venue.html', form=form, venue=venue)
 
@@ -319,6 +559,56 @@ def edit_venue(venue_id):
 def edit_venue_submission(venue_id):
   # TODO: take values from the form submitted, and update existing
   # venue record with ID <venue_id> using the new attributes
+  form = VenueForm(request.form)
+
+  if form.validate():
+    error_update_venue = 'No_error'
+    try:
+      data_venue = {}
+
+      venue = Venue.query.get(venue_id)
+      venue.name = request.form['name']
+      venue.city = request.form['city']
+      venue.phone = request.form.get('phone') or None
+      venue.facebook_link = request.form.get('facebook_link') or None
+      venue.website_link = request.form.get('website_link') or None
+      venue.seeking_description = request.form.get('seeking_description') or None
+      venue.image_link = request.form.get('image_link') or None
+
+      seeking_artist = request.form.get('seeking_artist') or None
+      if seeking_artist is None:
+        venue.seeking_artist = False
+      else:
+        venue.seeking_artist = True
+
+      # get state object
+      state = request.form.get('state')
+      venue_state = State.query.filter_by(abbreviation=state).first_or_404()
+      venue.state_fk = venue_state.id
+
+      # add genres M2M 
+      genres_list = request.form.getlist('genres')
+      genres_add = Genre.query.filter(Genre.name.in_(genres_list)).all()
+      venue.genres = genres_add
+
+      data_venue['name'] = venue.name
+      db.session.commit()
+    except:
+      error_update_venue = 'Error_db_add'
+      db.session.rollback()
+    finally:
+      db.session.close()
+  else:
+      error_update_venue = 'Error_form'
+
+  # error flash mensages
+  if error_update_venue == 'No_error':
+    flash('venue ' + data_venue['name'] + ' was successfully updated!', 'success')
+  elif error_update_venue == 'Error_db_add':
+    flash('An error occurred. venue ' + request.form['name'] + ' could not be updated.', 'danger')
+  elif error_update_venue == 'Error_form':
+    flash_errors(form)
+
   return redirect(url_for('show_venue', venue_id=venue_id))
 
 #  Create Artist
@@ -366,6 +656,11 @@ def create_artist_submission():
                     seeking_description=seeking_description, seeking_venue=seeking_venue, image_link=image_link,
                     state_fk=artist_state.id)
 
+      # add genres M2M 
+      genres_list = request.form.getlist('genres')
+      genres_add = Genre.query.filter(Genre.name.in_(genres_list)).all()
+      new_artist.genres = genres_add
+
       # save for use after commit
       data_artist['name']= new_artist.name
       
@@ -383,12 +678,11 @@ def create_artist_submission():
   
   # error flash mensages
   if error_add_new_artist == 'No_error':
-    flash('Artist ' + data_artist['name'] + ' was successfully added!')
+    flash('Artist ' + data_artist['name'] + ' was successfully added!', 'success')
   elif error_add_new_artist == 'Error_db_add':
-    flash('An error occurred. Artist ' + request.form['name'] + ' could not be added.')
+    flash('An error occurred. Artist ' + request.form['name'] + ' could not be added.' , 'danger')
   elif error_add_new_artist == 'Error_form':
-    flash('Error, Invalid Form!')
-    print(form.errors)
+    flash_errors(form)
   
   # TODO: on unsuccessful db insert, flash an error instead.
   # e.g., flash('An error occurred. Artist ' + data.name + ' could not be listed.')
@@ -460,12 +754,11 @@ def create_show_submission():
   
   # error flash mensages
   if error_add_new_show == 'No_error':
-    flash('The Show was successfully added!')
+    flash('The Show was successfully added!', 'success')
   elif error_add_new_show == 'Error_db_add':
-    flash('An error occurred. The Show could not be added.')
+    flash('An error occurred. The Show could not be added.', 'danger')
   elif error_add_new_show == 'Error_form':
-    flash('Error, Invalid Form!')
-    print(form.errors)
+    flash_errors(form)
 
   return render_template('pages/home.html')
 
@@ -477,6 +770,14 @@ def not_found_error(error):
 def server_error(error):
     return render_template('errors/500.html'), 500
 
+# Flash Form Errors
+def flash_errors(form):
+  for field, errors in form.errors.items():
+      for error in errors:
+          flash(u"Error in the %s field - %s" % (
+              getattr(form, field).label.text,
+              error
+          ), 'danger')
 
 if not app.debug:
     file_handler = FileHandler('error.log')

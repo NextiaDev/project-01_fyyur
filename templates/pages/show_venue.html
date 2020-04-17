@@ -5,13 +5,17 @@
 	<div class="col-sm-6">
 		<h1 class="monospace">
 			{{ venue.name }}
+			<div class=" pull-right">
+				<a class="btn btn-primary" href="{{ url_for('edit_venue', venue_id=venue.id) }}">Edit Venue</a>
+				<a class="btn btn-danger" id='btn-delete'>Delete Venue</a>
+			</div>
 		</h1>
 		<p class="subtitle">
 			ID: {{ venue.id }}
 		</p>
 		<div class="genres">
 			{% for genre in venue.genres %}
-			<span class="genre">{{ genre }}</span>
+			<span class="genre">{{ genre.name }}</span>
 			{% endfor %}
 		</div>
 		<p>
@@ -24,12 +28,12 @@
 			<i class="fas fa-phone-alt"></i> {% if venue.phone %}{{ venue.phone }}{% else %}No Phone{% endif %}
 		</p>
 		<p>
-			<i class="fas fa-link"></i> {% if venue.website %}<a href="{{ venue.website }}" target="_blank">{{ venue.website }}</a>{% else %}No Website{% endif %}
+			<i class="fas fa-link"></i> {% if venue.website_link %}<a href="{{ venue.website_link }}" target="_blank">{{ venue.website_link }}</a>{% else %}No Website{% endif %}
 		</p>
 		<p>
 			<i class="fab fa-facebook-f"></i> {% if venue.facebook_link %}<a href="{{ venue.facebook_link }}" target="_blank">{{ venue.facebook_link }}</a>{% else %}No Facebook Link{% endif %}
 		</p>
-		{% if venue.seeking_talent %}
+		{% if venue.seeking_artist %}
 		<div class="seeking">
 			<p class="lead">Currently seeking talent</p>
 			<div class="description">
@@ -79,3 +83,31 @@
 
 {% endblock %}
 
+{% block scripts %}
+<script type="text/javascript">
+	// delete venue ajax, redirects to home on success
+	// No confirmation necessary, my users know what they are doing :) 
+	document.getElementById('btn-delete').onclick = function ()
+	{
+		fetch("{{ url_for('delete_venue', venue_id=venue.id) }}", {
+		  method: 'DELETE',
+		  headers: {
+		    'Content-Type': 'application/json'
+		  }
+		})
+		.then(response => response.json())
+		.then(jsonResponse => {
+		  console.log('response', jsonResponse);
+		  if (jsonResponse['success']){
+		  	window.location = '/'
+		  }
+		  else{
+		  	alert('Error: Venue not deleted!')
+		  }
+		})
+		.catch(function() {
+  			alert('Error: Venue not deleted!')
+		})
+	}
+</script>
+{% endblock %}

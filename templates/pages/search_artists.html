@@ -13,5 +13,18 @@
 		</a>
 	</li>
 	{% endfor %}
+	{% if results_location %}
+	<label>Results for Locations</label>
+		{% for artist in results_location %}
+		<li>
+			<a href="/artists/{{ artist.id }}">
+				<i class="fas fa-music"></i>
+				<div class="item">
+					<h5>{{ artist.name }}</h5>
+				</div>
+			</a>
+		</li>
+		{% endfor %}
+	{% endif %}
 </ul>
 {% endblock %}

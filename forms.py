@@ -1,22 +1,17 @@
 from datetime import datetime
 from flask_wtf import Form
 from wtforms import StringField, SelectField, SelectMultipleField, DateTimeField, BooleanField
-from wtforms.validators import DataRequired, AnyOf, URL, Length, ValidationError, Optional
+from wtforms.validators import DataRequired, URL, ValidationError, Optional, Length
 import phonenumbers
-import re
 from models import Genre, State
-
-# phone validation format and lenght
-def isValidPhone(form, field):
-    if not re.search(r"^[0-9]{3}-[0-9]{3}-[0-9]{4}$", field.data) and len(field.data) > 10:
-        raise ValidationError("Invalid phone number.")
+from enum import Enum
 
 # phone validation for US
 def isValidPhoneState(form, field):
     try:
-        input_number = phonenumbers.parse(field.data, 'US')
-        if not phonenumbers.is_possible_number(input_number):
-            raise ValidationError('Invalid phone number.')
+        phone = phonenumbers.parse(field.data, 'US')
+        if not phonenumbers.is_possible_number(phone):
+            raise ValidationError('Invalid phone number!')
     except Exception as e:
         raise ValidationError(e.args)
 
@@ -28,7 +23,39 @@ def getStates():
 def getGenres():
     return Genre.query.with_entities(Genre.name, Genre.name).all()
 
+# Enum + Custom Validator for genre
+class E_Genre(Enum):
+  Alternative = 'Alternative'
+  Blues = 'Blues'
+  Classical = 'Classical'
+  Country = 'Country'
+  Electronic = 'Electronic'
+  Folk = 'Folk'
+  Funk = 'Funk'
+  Hip_Hop = 'Hip-Hop'
+  Heavy_Metal = 'Heavy Metal'
+  Instrumental = 'Instrumental'
+  Jazz = 'Jazz'
+  Musical_Theatre = 'Musical Theatre'
+  Pop = 'Pop'
+  Punk = 'Punk'
+  R_AND_B = 'R&B'
+  Reggae = 'Reggae'
+  Rock_n_Roll = 'Rock n Roll'
+  Soul = 'Soul'
+  Other = 'Other'
+  
+  @classmethod
+  def choices(cls):
+    return [ (choice.value, choice.value) for choice in cls ]
 
+def isValidGenre(form, field):
+    try:
+        valid_genres = set([ (choice.value) for choice in E_Genre ])
+        if not valid_genres.intersection(set(field.data)):
+            raise ValidationError("Invalid Genre!")    
+    except Exception as e:
+        raise ValidationError(e.args)
 
 class ShowForm(Form):
     artist_id = StringField(
@@ -60,14 +87,14 @@ class VenueForm(Form):
         'address', validators=[DataRequired()]
     )
     phone = StringField(
-        'phone', validators=[isValidPhone, isValidPhoneState, Length(min=10, max=18), Optional()]
+        'phone', validators=[isValidPhoneState, Optional()]
     )
     image_link = StringField(
-        'image_link', validators=[ Optional()]
+        'image_link', validators=[Length(max=500), Optional()]
     )
     genres = SelectMultipleField(
         # TODO implement enum restriction
-        'genres', validators=[DataRequired()],
+        'genres', validators=[DataRequired(), isValidGenre],
         choices=getGenres()
     )
     facebook_link = StringField(
@@ -96,18 +123,17 @@ class ArtistForm(Form):
     )
     phone = StringField(
         # TODO implement validation logic for state
-        'phone', validators=[isValidPhone, isValidPhoneState, Length(min=10, max=18), Optional()]
+        'phone', validators=[isValidPhoneState, Optional()]
     )
     image_link = StringField(
-        'image_link', validators=[ Optional()]
+        'image_link', validators=[ Length(max=500), Optional()]
     )
     genres = SelectMultipleField(
         # TODO implement enum restriction
-        'genres', validators=[DataRequired()],
+        'genres', validators=[DataRequired(), isValidGenre],
         choices=getGenres()
     )
     facebook_link = StringField(
-        # TODO implement enum restriction 
         'facebook_link', validators=[URL(), Optional()]
     )
     website_link = StringField(

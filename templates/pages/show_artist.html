@@ -5,13 +5,18 @@
 	<div class="col-sm-6">
 		<h1 class="monospace">
 			{{ artist.name }}
+			<div class="pull-right">
+				<a class="btn btn-primary" href="{{ url_for('edit_artist', artist_id=artist.id) }}">Edit Artist</a>
+				<a class="btn btn-warning" href="{{ url_for('load_albums', artist_id=artist.id) }}">ADD Random Album/Song</a>
+			</div>
+
 		</h1>
 		<p class="subtitle">
 			ID: {{ artist.id }}
 		</p>
 		<div class="genres">
 			{% for genre in artist.genres %}
-			<span class="genre">{{ genre }}</span>
+			<span class="genre">{{ genre.name }}</span>
 			{% endfor %}
 		</div>
 		<p>
@@ -21,7 +26,7 @@
 			<i class="fas fa-phone-alt"></i> {% if artist.phone %}{{ artist.phone }}{% else %}No Phone{% endif %}
         </p>
         <p>
-			<i class="fas fa-link"></i> {% if artist.website %}<a href="{{ artist.website }}" target="_blank">{{ artist.website }}</a>{% else %}No Website{% endif %}
+			<i class="fas fa-link"></i> {% if artist.website_link %}<a href="{{ artist.website_link }}" target="_blank">{{ artist.website_link }}</a>{% else %}No Website{% endif %}
 		</p>
 		<p>
 			<i class="fab fa-facebook-f"></i> {% if artist.facebook_link %}<a href="{{ artist.facebook_link }}" target="_blank">{{ artist.facebook_link }}</a>{% else %}No Facebook Link{% endif %}
@@ -38,6 +43,27 @@
 			<i class="fas fa-moon"></i> Not currently seeking performance venues
 		</p>
 		{% endif %}
+		<div>
+		{% if albums %}
+			<br>
+			<label>Albums</label>
+			<ul>
+			{% for album in albums %}
+				<li>
+					<strong> {{ album.name}}</strong> - Songs: 
+						{% for song in album.songs %}
+							{% if loop.last %}
+								{{ song.name }}
+							{% else %}
+								{{ song.name }},
+							{% endif %}
+						{% endfor %}
+				</li>
+			{% endfor %}
+			</ul>
+
+		{% endif %}
+		</div>
 	</div>
 	<div class="col-sm-6">
 		{% if artist.image_link %}

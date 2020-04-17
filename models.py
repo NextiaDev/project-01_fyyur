@@ -1,7 +1,10 @@
 #----------------------------------------------------------------------------#
-# Models.
+# Models. 
 #----------------------------------------------------------------------------#
 from database import *
+
+
+# DER in fyyru_der.jpeg
 
 genres_venue = db.Table('genres_venue',
     db.Column('Venue', db.Integer, db.ForeignKey('Venue.id'), primary_key=True),
@@ -23,6 +26,8 @@ class State(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
     abbreviation = db.Column(db.String(6), nullable=False)
+    venues = db.relationship('Venue', backref='state')
+    artists = db.relationship('Artist', backref='state')
 
 class Genre(db.Model):
   __tablename__ = 'Genre'
@@ -33,6 +38,9 @@ class Album(db.Model):
   __tablename__ = 'Album'
   id = db.Column(db.Integer, primary_key=True)
   name = db.Column(db.String(120), nullable=False)
+  # realtionships
+  songs = db.relationship('Song', backref='album')
+
 
 class Song(db.Model):
   __tablename__ = 'Song'
@@ -76,8 +84,9 @@ class Venue(db.Model):
     seeking_artist = db.Column(db.Boolean, nullable=False)
     seeking_description = db.Column(db.String(240), nullable=True)
     # Relationships
-    genres = db.relationship('Genre', secondary=genres_venue, backref=db.backref('venues', lazy=True))
-    artists = db.relationship("Shows", back_populates="venue", lazy='dynamic')
+    genres = db.relationship('Genre', secondary=genres_venue, backref=db.backref('venues'), lazy='dynamic')
+    artists = db.relationship("Shows", back_populates="venue", lazy='dynamic', cascade="all, delete-orphan")
+
     # FK
     state_fk = db.Column(db.Integer, db.ForeignKey('State.id'), nullable=False)
     
@@ -96,7 +105,8 @@ class Artist(db.Model):
     seeking_description = db.Column(db.String(240), nullable=True)
     
     # relationships
-    genres = db.relationship('Genre', secondary=genres_artist, backref=db.backref('artists', lazy=True))
+    albums = db.relationship('Album', secondary=album_artist, backref=db.backref('artists'), lazy='dynamic')
+    genres = db.relationship('Genre', secondary=genres_artist, backref=db.backref('artists'), lazy='dynamic')
     venues = db.relationship("Shows", back_populates="artist", lazy='dynamic')
     # FK
     state_fk = db.Column(db.Integer, db.ForeignKey('State.id'), nullable=False)
