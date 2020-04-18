@@ -131,13 +131,16 @@ def populate_genres_states():
         ]
     for choice in genres:
       new_genre = Genre(name=choice[0])
-      db.session.add(new_genre)
 
-      db.session.commit()
+    db.session.add(new_genre)
+    db.session.commit()
+    flash('Genres and States added to DB. Restart Flask to see the changes', 'success')
   except:
     db.session.rollback()
+    flash('Error Genres and States no added', 'danger')
   finally:
     db.session.close()
+
 
   return render_template('pages/home.html')
 
@@ -148,8 +151,8 @@ def load_albums(artist_id):
   try:
     # get_random_word sometimes can fail because a bug but for testing its ok, try again :)
     # create random albums
-    album1 = Album('Album Test 1')
-    album2 = Album('Album Test 2')
+    album1 = Album(name='Album Test 1')
+    album2 = Album(name='Album Test 2')
     db.session.add_all([album1, album2])
     db.session.commit()
 
@@ -166,7 +169,6 @@ def load_albums(artist_id):
 
   except:
     db.session.rollback()
-    print(sys.exc_info())
   finally:
     db.session.close()
 

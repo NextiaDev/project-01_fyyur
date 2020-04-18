@@ -12,11 +12,22 @@ def isValidPhone(form, field):
 
 # states from db
 def getStates():
-    return State.query.with_entities(State.abbreviation, State.abbreviation).all()
+    # prevent error on flask db init
+    try:
+        db_states = State.query.with_entities(State.abbreviation, State.abbreviation).all()
+    except:
+        db_states = ''
+    return db_states 
 
 # genres from db
 def getGenres():
-    return Genre.query.with_entities(Genre.name, Genre.name).all()
+    # prevent error on flask db init
+    try:
+        db_genres = Genre.query.with_entities(Genre.name, Genre.name).all()
+    except:
+        db_genres = ''
+
+    return db_genres 
 
 # Enum + Custom Validator for genre to complete the TODO requirement
 class E_Genre(Enum):
