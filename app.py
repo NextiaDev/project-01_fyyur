@@ -149,14 +149,13 @@ def populate_genres_states():
 def load_albums(artist_id):
   # load albums and songs
   try:
-    # get_random_word sometimes can fail because a bug but for testing its ok, try again :)
-    # create random albums
+    # create test albums
     album1 = Album(name='Album Test 1')
     album2 = Album(name='Album Test 2')
     db.session.add_all([album1, album2])
     db.session.commit()
 
-    # create random songs
+    # create test songs
     song1 = Song(name='Song Test 1', album_fk=album1.id)
     song2 = Song(name='Song Test 2', album_fk=album1.id)
     song3 = Song(name='Song Test 3', album_fk=album2.id)
