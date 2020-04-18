@@ -86,7 +86,7 @@
 {% block scripts %}
 <script type="text/javascript">
 	// delete venue ajax, redirects to home on success
-	// No confirmation necessary, my users know what they are doing :) 
+	// No confirmation necessary, my users know what they are doing :)
 	document.getElementById('btn-delete').onclick = function ()
 	{
 		fetch("{{ url_for('delete_venue', venue_id=venue.id) }}", {
@@ -99,7 +99,7 @@
 		.then(jsonResponse => {
 		  console.log('response', jsonResponse);
 		  if (jsonResponse['success']){
-		  	window.location = '/'
+		  	window.location = '/?del_venue=true'
 		  }
 		  else{
 		  	alert('Error: Venue not deleted!')

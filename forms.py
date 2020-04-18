@@ -1,19 +1,14 @@
 from datetime import datetime
 from flask_wtf import Form
 from wtforms import StringField, SelectField, SelectMultipleField, DateTimeField, BooleanField
-from wtforms.validators import DataRequired, URL, ValidationError, Optional, Length
-import phonenumbers
+from wtforms.validators import DataRequired, URL, ValidationError, Optional, Length, re
 from models import Genre, State
 from enum import Enum
 
-# phone validation for US
-def isValidPhoneState(form, field):
-    try:
-        phone = phonenumbers.parse(field.data, 'US')
-        if not phonenumbers.is_possible_number(phone):
-            raise ValidationError('Invalid phone number!')
-    except Exception as e:
-        raise ValidationError(e.args)
+# phone validation 
+def isValidPhone(form, field):
+    if not re.search(r"^[0-9]{3}-[0-9]{3}-[0-9]{4}$", field.data):
+        raise ValidationError("Invalid phone number, format must be xxx-xxx-xxxx")
 
 # states from db
 def getStates():
@@ -23,7 +18,7 @@ def getStates():
 def getGenres():
     return Genre.query.with_entities(Genre.name, Genre.name).all()
 
-# Enum + Custom Validator for genre
+# Enum + Custom Validator for genre to complete the TODO requirement
 class E_Genre(Enum):
   Alternative = 'Alternative'
   Blues = 'Blues'
@@ -57,6 +52,8 @@ def isValidGenre(form, field):
     except Exception as e:
         raise ValidationError(e.args)
 
+# Forms 
+
 class ShowForm(Form):
     artist_id = StringField(
         'artist_id',
@@ -87,7 +84,7 @@ class VenueForm(Form):
         'address', validators=[DataRequired()]
     )
     phone = StringField(
-        'phone', validators=[isValidPhoneState, Optional()]
+        'phone', validators=[isValidPhone,Length(min=12, max=12), Optional()]
     )
     image_link = StringField(
         'image_link', validators=[Length(max=500), Optional()]
@@ -123,7 +120,7 @@ class ArtistForm(Form):
     )
     phone = StringField(
         # TODO implement validation logic for state
-        'phone', validators=[isValidPhoneState, Optional()]
+        'phone', validators=[isValidPhone, Length(min=12, max=12), Optional()]
     )
     image_link = StringField(
         'image_link', validators=[ Length(max=500), Optional()]

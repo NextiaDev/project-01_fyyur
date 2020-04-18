@@ -14,7 +14,6 @@ from os import sys
 from forms import *
 from database import *
 from models import *
-from random_word import RandomWords
 
 #----------------------------------------------------------------------------#
 # Filters.
@@ -39,6 +38,11 @@ def index():
   # get 10 last artists and venues created by id
   artists = Artist.query.order_by(Artist.id.desc()).limit(10).all()
   venues = Venue.query.order_by(Venue.id.desc()).limit(10).all()
+
+  #if comes from delete venue
+  del_venue = request.args.get('del_venue', '')
+  if del_venue == 'true':
+    flash('Venue deleted!', 'success')
 
   return render_template('pages/home.html', venues=venues, artists=artists )
 
@@ -142,18 +146,17 @@ def populate_genres_states():
 def load_albums(artist_id):
   # load albums and songs
   try:
-    r = RandomWords()
     # get_random_word sometimes can fail because a bug but for testing its ok, try again :)
     # create random albums
-    album1 = Album(name=r.get_random_word())
-    album2 = Album(name=r.get_random_word())
+    album1 = Album('Album Test 1')
+    album2 = Album('Album Test 2')
     db.session.add_all([album1, album2])
     db.session.commit()
 
     # create random songs
-    song1 = Song(name=r.get_random_word(), album_fk=album1.id)
-    song2 = Song(name=r.get_random_word(), album_fk=album1.id)
-    song3 = Song(name=r.get_random_word(), album_fk=album2.id)
+    song1 = Song(name='Song Test 1', album_fk=album1.id)
+    song2 = Song(name='Song Test 2', album_fk=album1.id)
+    song3 = Song(name='Song Test 3', album_fk=album2.id)
     db.session.add_all([song1, song2, song3])    
 
     # link to artist
@@ -351,7 +354,7 @@ def create_venue_submission():
   elif error_add_new_venue == 'Error_form':
     flash_errors(form)
 
-  return render_template('pages/home.html')
+  return redirect(url_for('index'))
 
 @app.route('/venues/<venue_id>', methods=['DELETE'])
 def delete_venue(venue_id):
@@ -686,7 +689,7 @@ def create_artist_submission():
   
   # TODO: on unsuccessful db insert, flash an error instead.
   # e.g., flash('An error occurred. Artist ' + data.name + ' could not be listed.')
-  return render_template('pages/home.html')
+  return redirect(url_for('index'))
 
 
 #  Shows
@@ -760,7 +763,7 @@ def create_show_submission():
   elif error_add_new_show == 'Error_form':
     flash_errors(form)
 
-  return render_template('pages/home.html')
+  return redirect(url_for('index'))
 
 @app.errorhandler(404)
 def not_found_error(error):
