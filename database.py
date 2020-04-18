@@ -12,6 +12,8 @@ app = Flask(__name__)
 moment = Moment(app)
 app.config.from_object('config')
 db = SQLAlchemy(app)
+# create initial DB
+db.create_all()
 
 # Flask Migrate
 migrate = Migrate(app, db)
