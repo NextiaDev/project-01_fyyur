@@ -131,8 +131,8 @@ def populate_genres_states():
         ]
     for choice in genres:
       new_genre = Genre(name=choice[0])
-
-    db.session.add(new_genre)
+      db.session.add(new_genre)
+      
     db.session.commit()
     flash('Genres and States added to DB. Restart Flask to see the changes', 'success')
   except:

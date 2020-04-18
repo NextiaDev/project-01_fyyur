@@ -95,7 +95,7 @@ class VenueForm(Form):
         'address', validators=[DataRequired()]
     )
     phone = StringField(
-        'phone', validators=[isValidPhone,Length(min=12, max=12), Optional()]
+        'phone', validators=[isValidPhone,Length(min=10, max=18), Optional()]
     )
     image_link = StringField(
         'image_link', validators=[Length(max=500), Optional()]
@@ -131,7 +131,7 @@ class ArtistForm(Form):
     )
     phone = StringField(
         # TODO implement validation logic for state
-        'phone', validators=[isValidPhone, Length(min=12, max=12), Optional()]
+        'phone', validators=[isValidPhone, Length(min=10, max=18), Optional()]
     )
     image_link = StringField(
         'image_link', validators=[ Length(max=500), Optional()]
